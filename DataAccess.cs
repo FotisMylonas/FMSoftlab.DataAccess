@@ -1,194 +1,17 @@
 ﻿using Dapper;
+using FmSoftlab.Logging;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 
 
-namespace FmSoftlab.DataAccess
+namespace FMSoftlab.DataAccess
 {
-    public interface ISqlConnectionProvider : IDisposable
-    {
-        SqlConnection Connection { get; }
-        SqlTransaction BeginTransaction(IsolationLevel iso);
-    }
-
-    public class SqlConnectionProvider : IDisposable, ISqlConnectionProvider
-    {
-        private readonly bool _ownsConnection;
-        private readonly SqlConnection _sqlConnection;
-        private readonly ILogger _log;
-
-        SqlConnectionProvider(SqlConnection sqlConnection) : this(sqlConnection, false, null)
-        {
-
-        }
-        public SqlConnectionProvider(SqlConnection sqlConnection, bool logServerMessages, ILogger log)
-        {
-            _sqlConnection = sqlConnection;
-            _ownsConnection=false;
-            _log=log;
-            if (logServerMessages)
-            {
-                _sqlConnection.InfoMessage += new SqlInfoMessageEventHandler(OnInfoMessage);
-            }
-        }
-
-        public SqlConnectionProvider(string connectionString) : this(connectionString, false, null)
-        {
-
-        }
-
-        public SqlConnectionProvider(string connectionString, bool logServerMessages, ILogger log)
-        {
-            _sqlConnection=new SqlConnection(connectionString);
-            _ownsConnection = true;
-            _log=log;
-            if (logServerMessages)
-            {
-                _sqlConnection.InfoMessage += new SqlInfoMessageEventHandler(OnInfoMessage);
-            }
-        }
-        private void OnInfoMessage(object sender, SqlInfoMessageEventArgs e)
-        {
-            if (e is null)
-                return;
-            _log.LogDebug(e.Message);
-            foreach (SqlError info in e.Errors)
-            {
-                Console.WriteLine(info.Message);
-            }
-        }
-        public SqlTransaction BeginTransaction(IsolationLevel iso)
-        {
-            _sqlConnection.Open();
-            return _sqlConnection.BeginTransaction(iso);
-        }
-
-        public void Dispose()
-        {
-            if (_ownsConnection)
-            {
-                try
-                {
-                    _sqlConnection.Close();
-                }
-                finally
-                {
-                    _sqlConnection.Dispose();
-                }
-            }
-        }
-        public SqlConnection Connection { get { return _sqlConnection; } }
-    }
-    public interface IExecutionContext
-    {
-        int CommandTimeout { get; set; }
-        string ConnectionString { get; set; }
-        IsolationLevel IsolationLevel { get; set; }
-        bool LogServerMessages { get; set; }
-    }
-
-    public class ExecutionContext : IExecutionContext
-    {
-        public int CommandTimeout { get; set; }
-        public string ConnectionString { get; set; }
-        public IsolationLevel IsolationLevel { get; set; }
-        public bool LogServerMessages { get; set; }
-        public ExecutionContext(string connectionString, int commandTimeout, IsolationLevel isolationLevel)
-        {
-            CommandTimeout=commandTimeout;
-            ConnectionString =connectionString;
-            IsolationLevel=isolationLevel;
-        }
-        public ExecutionContext(string connectionString) : this(connectionString, 30, IsolationLevel.ReadCommitted)
-        {
-
-        }
-    }
-    public interface IExecutionContextFactory
-    {
-        IExecutionContext GetShortRunning();
-        IExecutionContext TenSeconds();
-        IExecutionContext ThirtySeconds();
-        IExecutionContext OneMinute();
-        IExecutionContext FiveMinutes();
-        IExecutionContext TenMinutes();
-        IExecutionContext OneHour();
-        IExecutionContext TwoHours();
-        IExecutionContext ThreeHours();
-        IExecutionContext GetLongRunning();
-        IExecutionContext GetForeverRunning();
-    }
-
-    public class ExecutionContextFactory : IExecutionContextFactory
-    {
-        private string _connectionString;
-        private readonly IsolationLevel _isolationLevel;
-        private readonly int _shortRunning;
-        private readonly int _longrunning;
-
-        public ExecutionContextFactory(string connectionString, IsolationLevel isolationLevel, int shortRunning, int longrunning)
-        {
-            _connectionString=connectionString;
-            _isolationLevel=isolationLevel;
-            _shortRunning=shortRunning;
-            _longrunning=longrunning;
-        }
-        public IExecutionContext GetShortRunning()
-        {
-            return new ExecutionContext(_connectionString, _shortRunning, _isolationLevel);
-        }
-
-        public IExecutionContext TenSeconds()
-        {
-            return new ExecutionContext(_connectionString, 10, _isolationLevel);
-        }
-        public IExecutionContext ThirtySeconds()
-        {
-            return new ExecutionContext(_connectionString, 10, _isolationLevel);
-        }
-
-        public IExecutionContext OneMinute()
-        {
-            return new ExecutionContext(_connectionString, 60, _isolationLevel);
-        }
-
-        public IExecutionContext FiveMinutes()
-        {
-            return new ExecutionContext(_connectionString, 300, _isolationLevel);
-        }
-
-        public IExecutionContext TenMinutes()
-        {
-            return new ExecutionContext(_connectionString, 600, _isolationLevel);
-        }
-        public IExecutionContext OneHour()
-        {
-            return new ExecutionContext(_connectionString, 3600, _isolationLevel);
-        }
-        public IExecutionContext TwoHours()
-        {
-            return new ExecutionContext(_connectionString, 7200, _isolationLevel);
-        }
-
-        public IExecutionContext ThreeHours()
-        {
-            return new ExecutionContext(_connectionString, 10800, _isolationLevel);
-        }
-
-        public IExecutionContext GetLongRunning()
-        {
-            return new ExecutionContext(_connectionString, _longrunning, _isolationLevel);
-        }
-        public IExecutionContext GetForeverRunning()
-        {
-            return new ExecutionContext(_connectionString, 0, _isolationLevel);
-        }
-    }
 
     public class SqlExecutorBase
     {
@@ -197,82 +20,55 @@ namespace FmSoftlab.DataAccess
         {
             _log=log;
         }
-
-        public async Task Execute(IExecutionContext executionContext, string sql, DynamicParameters dyn)
-        {
-            await Execute(executionContext, sql, dyn, CommandType.StoredProcedure);
-        }
-
-        public async Task Execute(IExecutionContext executionContext, string sql, DynamicParameters dyn, CommandType commandType)
-        {
-            //_log?.LogDebug($"Execute in, ConnectionString:{executionContext.ConnectionString}, Sql:{sql}, CommandTimeout:{executionContext.CommandTimeout}, IsolationLevel:{executionContext.IsolationLevel}");
-            using (ISqlConnectionProvider con = new SqlConnectionProvider(executionContext.ConnectionString, executionContext.LogServerMessages, _log))
-            {
-                await Execute(con, executionContext, sql, dyn, commandType);
-            }
-        }
         public async Task Execute(ISqlConnectionProvider connectionProvider, IExecutionContext executionContext, string sql, DynamicParameters dyn, CommandType commandType)
         {
             //_log?.LogDebug($"Execute in, ConnectionString:{executionContext.ConnectionString}, Sql:{sql}, CommandTimeout:{executionContext.CommandTimeout}, IsolationLevel:{executionContext.IsolationLevel}");
             try
             {
-                using (var trans = connectionProvider.BeginTransaction(executionContext.IsolationLevel))
+                if (executionContext.BeginTransaction)
                 {
-                    await connectionProvider.Connection.ExecuteAsync(sql, dyn, commandTimeout: executionContext.CommandTimeout, transaction: trans, commandType: commandType);
-                    trans.Commit();
+                    using (var trans = connectionProvider.BeginTransaction(executionContext.IsolationLevel))
+                    {
+                        await connectionProvider.Connection.ExecuteAsync(sql, dyn, commandTimeout: executionContext.CommandTimeout, transaction: trans, commandType: commandType);
+                        trans.Commit();
+                    }
+                }
+                else
+                {
+                    await connectionProvider.Connection.ExecuteAsync(sql, dyn, commandTimeout: executionContext.CommandTimeout, commandType: commandType);
                 }
             }
             catch (Exception ex)
             {
-                _log?.LogError($"{ex.Message}{ex.StackTrace}");
+                _log?.LogAllErrors(ex);
                 throw;
             }
         }
-
-        public async Task<T> ExecuteScalar<T>(IExecutionContext executionContext, string sql, DynamicParameters dyn, CommandType commandType)
-        {
-            //_log?.LogDebug($"Execute in, ConnectionString:{executionContext.ConnectionString}, Sql:{sql}, CommandTimeout:{executionContext.CommandTimeout}, IsolationLevel:{executionContext.IsolationLevel}");
-            T res = default(T);
-            using (ISqlConnectionProvider con = new SqlConnectionProvider(executionContext.ConnectionString, executionContext.LogServerMessages, _log))
-            {
-                res=await ExecuteScalar<T>(con, executionContext, sql, dyn, commandType);
-            }
-            return res;
-        }
-
         public async Task<T> ExecuteScalar<T>(ISqlConnectionProvider connectionProvider, IExecutionContext executionContext, string sql, DynamicParameters dyn, CommandType commandType)
         {
             //_log?.LogDebug($"Execute in, ConnectionString:{executionContext.ConnectionString}, Sql:{sql}, CommandTimeout:{executionContext.CommandTimeout}, IsolationLevel:{executionContext.IsolationLevel}");
             T res = default(T);
             try
             {
-                using (var trans = connectionProvider.BeginTransaction(executionContext.IsolationLevel))
+                if (executionContext.BeginTransaction)
                 {
-                    res=await connectionProvider.Connection.ExecuteScalarAsync<T>(sql, dyn, commandTimeout: executionContext.CommandTimeout, transaction: trans, commandType: commandType);
-                    trans.Commit();
+                    using (var trans = connectionProvider.BeginTransaction(executionContext.IsolationLevel))
+                    {
+                        res=await connectionProvider.Connection.ExecuteScalarAsync<T>(sql, dyn, commandTimeout: executionContext.CommandTimeout, transaction: trans, commandType: commandType);
+                        trans.Commit();
+                    }
+                }
+                else
+                {
+                    res=await connectionProvider.Connection.ExecuteScalarAsync<T>(sql, dyn, commandTimeout: executionContext.CommandTimeout, commandType: commandType);
                 }
             }
             catch (Exception ex)
             {
-                _log?.LogError($"{ex.Message}{ex.StackTrace}");
+                _log?.LogAllErrors(ex);
                 throw;
             }
             return res;
-        }
-
-        public async Task<IEnumerable<T>> Query<T>(IExecutionContext executionContext, string sql, DynamicParameters dyn)
-        {
-            return await Query<T>(executionContext, sql, dyn, CommandType.StoredProcedure);
-        }
-        public async Task<IEnumerable<T>> Query<T>(IExecutionContext executionContext, string sql, DynamicParameters dyn, CommandType commandType)
-        {
-            IEnumerable<T> result = Enumerable.Empty<T>();
-            //_log?.LogDebug($"Execute in, ConnectionString:{executionContext.ConnectionString}, Sql:{sql}, CommandTimeout:{executionContext.CommandTimeout}, IsolationLevel:{executionContext.IsolationLevel}");
-            using (ISqlConnectionProvider con = new SqlConnectionProvider(executionContext.ConnectionString, executionContext.LogServerMessages, _log))
-            {
-                result=await Query<T>(con, executionContext, sql, dyn, commandType);
-            }
-            return result;
         }
         public async Task<IEnumerable<T>> Query<T>(ISqlConnectionProvider connectionProvider, IExecutionContext executionContext, string sql, DynamicParameters dyn, CommandType commandType)
         {
@@ -280,29 +76,32 @@ namespace FmSoftlab.DataAccess
             //_log?.LogDebug($"Execute in, ConnectionString:{executionContext.ConnectionString}, Sql:{sql}, CommandTimeout:{executionContext.CommandTimeout}, IsolationLevel:{executionContext.IsolationLevel}");
             try
             {
-                using (var trans = connectionProvider.BeginTransaction(executionContext.IsolationLevel))
+                if (executionContext.BeginTransaction)
                 {
-                    var dbres = await connectionProvider.Connection.QueryAsync<T>(sql, dyn, commandTimeout: executionContext.CommandTimeout, transaction: trans, commandType: commandType);
+                    using (var trans = connectionProvider.BeginTransaction(executionContext.IsolationLevel))
+                    {
+                        var dbres = await connectionProvider.Connection.QueryAsync<T>(sql, dyn, commandTimeout: executionContext.CommandTimeout, transaction: trans, commandType: commandType);
+                        if (dbres != null && dbres.Any())
+                        {
+                            result = dbres;
+                        }
+                        trans.Commit();
+                    }
+                }
+                else
+                {
+                    var dbres = await connectionProvider.Connection.QueryAsync<T>(sql, dyn, commandTimeout: executionContext.CommandTimeout, commandType: commandType);
                     if (dbres != null && dbres.Any())
                     {
                         result = dbres;
                     }
-                    trans.Commit();
                 }
+                return result;
             }
             catch (Exception ex)
             {
-                _log?.LogError($"{ex.Message}{ex.StackTrace}");
+                _log?.LogAllErrors(ex);
                 throw;
-            }
-            return result;
-        }
-        public async Task QueryMultiple(IExecutionContext executionContext, string sql, DynamicParameters dyn, CommandType commandType, Action<SqlMapper.GridReader> action)
-        {
-            //_log?.LogDebug($"Execute in, ConnectionString:{executionContext.ConnectionString}, Sql:{sql}, CommandTimeout:{executionContext.CommandTimeout}, IsolationLevel:{executionContext.IsolationLevel}");
-            using (ISqlConnectionProvider con = new SqlConnectionProvider(executionContext.ConnectionString, executionContext.LogServerMessages, _log))
-            {
-                await QueryMultiple(con, executionContext, sql, dyn, commandType, action);
             }
         }
         public async Task QueryMultiple(ISqlConnectionProvider connectionProvider, IExecutionContext executionContext, string sql, DynamicParameters dyn, CommandType commandType, Action<SqlMapper.GridReader> action)
@@ -310,19 +109,30 @@ namespace FmSoftlab.DataAccess
             //_log?.LogDebug($"Execute in, ConnectionString:{executionContext.ConnectionString}, Sql:{sql}, CommandTimeout:{executionContext.CommandTimeout}, IsolationLevel:{executionContext.IsolationLevel}");
             try
             {
-                using (var trans = connectionProvider.BeginTransaction(executionContext.IsolationLevel))
+                if (executionContext.BeginTransaction)
                 {
-                    SqlMapper.GridReader gridReader = await connectionProvider.Connection.QueryMultipleAsync(sql, dyn, commandTimeout: executionContext.CommandTimeout, transaction: trans, commandType: commandType);
+                    using (var trans = connectionProvider.BeginTransaction(executionContext.IsolationLevel))
+                    {
+                        SqlMapper.GridReader gridReader = await connectionProvider.Connection.QueryMultipleAsync(sql, dyn, commandTimeout: executionContext.CommandTimeout, transaction: trans, commandType: commandType);
+                        if (gridReader != null)
+                        {
+                            action(gridReader);
+                        }
+                        trans.Commit();
+                    }
+                }
+                else
+                {
+                    SqlMapper.GridReader gridReader = await connectionProvider.Connection.QueryMultipleAsync(sql, dyn, commandTimeout: executionContext.CommandTimeout, commandType: commandType);
                     if (gridReader != null)
                     {
                         action(gridReader);
                     }
-                    trans.Commit();
                 }
             }
             catch (Exception ex)
             {
-                _log?.LogError($"{ex.Message}{ex.StackTrace}");
+                _log?.LogAllErrors(ex);
                 throw;
             }
         }
@@ -378,75 +188,87 @@ namespace FmSoftlab.DataAccess
         public async Task Execute()
         {
             SqlExecutorBase executor = new SqlExecutorBase(_log);
-            if (_connectionProvider!=null)
+            ISqlConnectionProvider provider = _connectionProvider ?? new SqlConnectionProvider(
+                       _executionContext.ConnectionString,
+                       _executionContext.LogServerMessages,
+                       _log);
+            try
             {
                 await executor.Execute(_connectionProvider, _executionContext, _sql, _dyn, _commandType);
             }
-            else
+            finally
             {
-                await executor.Execute(_executionContext, _sql, _dyn, _commandType);
+                if (_connectionProvider == null)
+                {
+                    provider?.Dispose();
+                }
             }
         }
 
         public async Task<IEnumerable<T>> Query<T>()
         {
             SqlExecutorBase executor = new SqlExecutorBase(_log);
-            IEnumerable<T> dbres = Enumerable.Empty<T>();
-            if (_connectionProvider != null)
+            ISqlConnectionProvider provider = _connectionProvider ?? new SqlConnectionProvider(
+                       _executionContext.ConnectionString,
+                       _executionContext.LogServerMessages,
+                       _log);
+            try
             {
-                dbres=await executor.Query<T>(_connectionProvider, _executionContext, _sql, _dyn, _commandType);
+                return await executor.Query<T>(provider, _executionContext, _sql, _dyn, _commandType)??Enumerable.Empty<T>();
             }
-            else
+            finally
             {
-                dbres=await executor.Query<T>(_executionContext, _sql, _dyn, _commandType);
+                if (_connectionProvider == null)
+                {
+                    provider?.Dispose();
+                }
             }
-            return dbres;
         }
-
         public async Task<T> FirstOrDefault<T>()
         {
             T res = default(T);
-            SqlExecutorBase executor = new SqlExecutorBase(_log);
-            IEnumerable<T> dbres = Enumerable.Empty<T>();
-            if (_connectionProvider!=null)
-            {
-                dbres = await executor.Query<T>(_connectionProvider, _executionContext, _sql, _dyn, _commandType);
-            }
-            else
-            {
-                dbres = await executor.Query<T>(_executionContext, _sql, _dyn, _commandType);
-            }
-            if (dbres != null && dbres.Any())
-            {
-                res=dbres.FirstOrDefault();
-            }
+            var dbres = await Query<T>();
+            if (dbres?.Any()??false)
+                res=dbres.First();
             return res;
         }
         public async Task QueryMultiple(Action<SqlMapper.GridReader> action)
         {
             SqlExecutorBase executor = new SqlExecutorBase(_log);
-            if (_connectionProvider!=null)
+            ISqlConnectionProvider provider = _connectionProvider ?? new SqlConnectionProvider(
+                       _executionContext.ConnectionString,
+                       _executionContext.LogServerMessages,
+                       _log);
+            try
             {
                 await executor.QueryMultiple(_connectionProvider, _executionContext, _sql, _dyn, _commandType, action);
             }
-            else
+            finally
             {
-                await executor.QueryMultiple(_executionContext, _sql, _dyn, _commandType, action);
+                if (_connectionProvider == null)
+                {
+                    provider?.Dispose();
+                }
             }
         }
         public async Task<T> ExecuteScalar<T>()
         {
             SqlExecutorBase executor = new SqlExecutorBase(_log);
-            T res = default(T);
-            if (_connectionProvider!=null)
+            ISqlConnectionProvider provider = _connectionProvider ?? new SqlConnectionProvider(
+                       _executionContext.ConnectionString,
+                       _executionContext.LogServerMessages,
+                       _log);
+            try
             {
-                res = await executor.ExecuteScalar<T>(_connectionProvider, _executionContext, _sql, _dyn, _commandType);
+                return await executor.ExecuteScalar<T>(_connectionProvider, _executionContext, _sql, _dyn, _commandType);
             }
-            else
+            finally
             {
-                res = await executor.ExecuteScalar<T>(_executionContext, _sql, _dyn, _commandType);
+                if (_connectionProvider == null)
+                {
+                    provider?.Dispose();
+                }
             }
-            return res;
         }
     }
 }
