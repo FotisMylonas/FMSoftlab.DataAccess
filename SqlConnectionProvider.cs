@@ -11,7 +11,8 @@ namespace FMSoftlab.DataAccess
     public interface ISqlConnectionProvider : IDisposable
     {
         SqlConnection Connection { get; }
-        SqlTransaction BeginTransaction(IsolationLevel iso);
+        IDbTransaction BeginTransaction(IsolationLevel iso);
+        Task<IDbTransaction> BeginTransactionAsync(IsolationLevel iso);
         void Open();
         Task OpenAsync();
     }
@@ -22,10 +23,6 @@ namespace FMSoftlab.DataAccess
         private readonly SqlConnection _sqlConnection;
         private readonly ILogger _log;
 
-        SqlConnectionProvider(SqlConnection sqlConnection) : this(sqlConnection, false, null)
-        {
-
-        }
         public SqlConnectionProvider(SqlConnection sqlConnection, bool logServerMessages, ILogger log)
         {
             _sqlConnection = sqlConnection;
@@ -36,12 +33,6 @@ namespace FMSoftlab.DataAccess
                 _sqlConnection.InfoMessage += new SqlInfoMessageEventHandler(OnInfoMessage);
             }
         }
-
-        public SqlConnectionProvider(string connectionString) : this(connectionString, false, null)
-        {
-
-        }
-
         public SqlConnectionProvider(string connectionString, bool logServerMessages, ILogger log)
         {
             _sqlConnection=new SqlConnection(connectionString);
@@ -52,14 +43,30 @@ namespace FMSoftlab.DataAccess
                 _sqlConnection.InfoMessage += new SqlInfoMessageEventHandler(OnInfoMessage);
             }
         }
+        public SqlConnectionProvider(string connectionString) : this(connectionString, false, null)
+        {
+
+        }
+
+        public IDbTransaction BeginTransaction(IsolationLevel iso)
+        {
+            Open();
+            return _sqlConnection.BeginTransaction(iso);
+        }
+        public async Task<IDbTransaction> BeginTransactionAsync(IsolationLevel iso)
+        {
+            await OpenAsync();
+            return _sqlConnection.BeginTransaction(iso);
+        }
+
         private void OnInfoMessage(object sender, SqlInfoMessageEventArgs e)
         {
             if (e is null)
                 return;
-            _log.LogDebug(e.Message);
+            _log?.LogDebug(e.Message);
             foreach (SqlError info in e.Errors)
             {
-                _log.LogError(@"{Message} Procedure:{Procedure}, Line:{LineNumber}, Server:{Server}", info.Message, info.Procedure, info.LineNumber, info.Server);
+                _log?.LogError(@"{Message} Procedure:{Procedure}, Line:{LineNumber}, Server:{Server}", info.Message, info.Procedure, info.LineNumber, info.Server);
             }
         }
 
@@ -87,18 +94,6 @@ namespace FMSoftlab.DataAccess
                 await _sqlConnection.OpenAsync();
             }
         }
-
-        public SqlTransaction BeginTransaction(IsolationLevel iso)
-        {
-            Open();
-            return _sqlConnection.BeginTransaction(iso);
-        }
-        public async Task<SqlTransaction> BeginTransactionAsync(IsolationLevel iso)
-        {
-            await OpenAsync();
-            return _sqlConnection.BeginTransaction(iso);
-        }
-
         public void Dispose()
         {
             if (_ownsConnection)
