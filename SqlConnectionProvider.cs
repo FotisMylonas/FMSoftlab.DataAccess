@@ -25,23 +25,24 @@ namespace FMSoftlab.DataAccess
 
         public SqlConnectionProvider(SqlConnection sqlConnection, bool logServerMessages, ILogger log)
         {
+            if (logServerMessages)
+            {
+                sqlConnection.InfoMessage += new SqlInfoMessageEventHandler(OnInfoMessage);
+            }
             _sqlConnection = sqlConnection;
             _ownsConnection=false;
             _log=log;
-            if (logServerMessages)
-            {
-                _sqlConnection.InfoMessage += new SqlInfoMessageEventHandler(OnInfoMessage);
-            }
         }
         public SqlConnectionProvider(string connectionString, bool logServerMessages, ILogger log)
         {
-            _sqlConnection=new SqlConnection(connectionString);
-            _ownsConnection = true;
-            _log=log;
+            SqlConnection con = new SqlConnection(connectionString);
             if (logServerMessages)
             {
-                _sqlConnection.InfoMessage += new SqlInfoMessageEventHandler(OnInfoMessage);
+                con.InfoMessage += new SqlInfoMessageEventHandler(OnInfoMessage);
             }
+            _sqlConnection = con;
+            _ownsConnection = true;
+            _log=log;
         }
         public SqlConnectionProvider(string connectionString) : this(connectionString, false, null)
         {
@@ -110,5 +111,4 @@ namespace FMSoftlab.DataAccess
         }
         public SqlConnection Connection { get { return _sqlConnection; } }
     }
-
 }

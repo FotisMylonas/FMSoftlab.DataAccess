@@ -130,6 +130,7 @@ namespace FMSoftlab.DataAccess
 
     public class SqlExecution
     {
+        private readonly bool _startsTransaction;
         private readonly ISingleTransactionManager _singleTransactionManager;
         private readonly string _sql;
         private readonly DynamicParameters _dyn;
@@ -144,6 +145,7 @@ namespace FMSoftlab.DataAccess
             _dyn=dyn;
             _commandType=commandType;
             _log=log;
+            _startsTransaction=true;
         }
 
         public SqlExecution(IExecutionContext executionContext, string sql, DynamicParameters dyn, ILogger log)
@@ -153,6 +155,7 @@ namespace FMSoftlab.DataAccess
             _dyn=dyn;
             _commandType=CommandType.StoredProcedure;
             _log=log;
+            _startsTransaction=true;
         }
 
         public SqlExecution(IExecutionContext executionContext, ISingleTransactionManager singleTransactionManager, string sql, DynamicParameters dyn, CommandType commandType, ILogger log)
@@ -163,6 +166,7 @@ namespace FMSoftlab.DataAccess
             _commandType=commandType;
             _log=log;
             _singleTransactionManager = singleTransactionManager;
+            _startsTransaction=false;
         }
 
         public SqlExecution(IExecutionContext executionContext, ISingleTransactionManager singleTransactionManager, string sql, DynamicParameters dyn, ILogger log)
@@ -173,6 +177,7 @@ namespace FMSoftlab.DataAccess
             _commandType=CommandType.StoredProcedure;
             _log=log;
             _singleTransactionManager=singleTransactionManager;
+            _startsTransaction=false;
         }
 
         public async Task Execute()
@@ -180,7 +185,7 @@ namespace FMSoftlab.DataAccess
             ISingleTransactionManager tm = _singleTransactionManager ?? new SingleTransactionManager(new SqlConnectionProvider(_executionContext.ConnectionString), _executionContext, _log);
             try
             {
-                await tm.Execute(_sql, _dyn, async (connection, transaction) =>
+                await tm.Execute(_startsTransaction, _sql, _dyn, async (connection, transaction) =>
                 {
                     await connection.ExecuteAsync(
                         _sql,
@@ -192,7 +197,7 @@ namespace FMSoftlab.DataAccess
             }
             finally
             {
-                if (_singleTransactionManager==null)
+                if (_startsTransaction)
                 {
                     tm.Dispose();
                 }
@@ -205,7 +210,7 @@ namespace FMSoftlab.DataAccess
             ISingleTransactionManager tm = _singleTransactionManager ?? new SingleTransactionManager(new SqlConnectionProvider(_executionContext.ConnectionString), _executionContext, _log);
             try
             {
-                await tm.Execute(_sql, _dyn, async (connection, transaction) =>
+                await tm.Execute(_startsTransaction, _sql, _dyn, async (connection, transaction) =>
                 {
                     res = await connection.QueryAsync<T>(
                         _sql,
@@ -218,7 +223,7 @@ namespace FMSoftlab.DataAccess
             }
             finally
             {
-                if (_singleTransactionManager==null)
+                if (_startsTransaction)
                 {
                     tm.Dispose();
                 }
@@ -237,7 +242,7 @@ namespace FMSoftlab.DataAccess
             ISingleTransactionManager tm = _singleTransactionManager ?? new SingleTransactionManager(new SqlConnectionProvider(_executionContext.ConnectionString), _executionContext, _log);
             try
             {
-                await tm.Execute(_sql, _dyn, async (connection, transaction) =>
+                await tm.Execute(_startsTransaction, _sql, _dyn, async (connection, transaction) =>
                 {
                     var reader = await connection.QueryMultipleAsync(
                         _sql,
@@ -250,7 +255,7 @@ namespace FMSoftlab.DataAccess
             }
             finally
             {
-                if (_singleTransactionManager==null)
+                if (_startsTransaction)
                 {
                     tm.Dispose();
                 }
@@ -262,7 +267,7 @@ namespace FMSoftlab.DataAccess
             ISingleTransactionManager tm = _singleTransactionManager ?? new SingleTransactionManager(new SqlConnectionProvider(_executionContext.ConnectionString), _executionContext, _log);
             try
             {
-                await tm.Execute(_sql, _dyn, async (connection, transaction) =>
+                await tm.Execute(_startsTransaction, _sql, _dyn, async (connection, transaction) =>
                 {
                     res = await connection.ExecuteScalarAsync<T>(
                         _sql,
@@ -275,7 +280,7 @@ namespace FMSoftlab.DataAccess
             }
             finally
             {
-                if (_singleTransactionManager==null)
+                if (_startsTransaction)
                 {
                     tm.Dispose();
                 }

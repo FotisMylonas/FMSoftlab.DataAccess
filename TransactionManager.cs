@@ -17,7 +17,7 @@ namespace FMSoftlab.DataAccess
         void Rollback();
         IDbTransaction BeginTransaction();
         Task<IDbTransaction> BeginTransactionAsync();
-        Task Execute(string sql, DynamicParameters dynamicParameters, Func<IDbConnection, IDbTransaction, Task> execute);
+        Task Execute(bool startsTransaction, string sql, DynamicParameters dynamicParameters, Func<IDbConnection, IDbTransaction, Task> execute);
     }
     public class SingleTransactionManager : ISingleTransactionManager
     {
@@ -109,19 +109,22 @@ namespace FMSoftlab.DataAccess
                 _log?.LogAllErrors(ex);
             }
         }
-        public async Task Execute(string sql, DynamicParameters dynamicParameters, Func<IDbConnection, IDbTransaction, Task> execute)
+        public async Task Execute(bool startsTransaction, string sql, DynamicParameters dynamicParameters, Func<IDbConnection, IDbTransaction, Task> execute)
         {
             if (string.IsNullOrWhiteSpace(sql))
                 return;
             try
             {
-                await BeginTransactionAsync();
+                if (startsTransaction)
+                    await BeginTransactionAsync();
                 await execute(_connectionProvider.Connection, _tranaction);
-                Commit();
+                if (startsTransaction)
+                    Commit();
             }
             catch (Exception ex)
             {
-                Rollback();
+                if (startsTransaction)
+                    Rollback();
                 string tracesqltext = SqlHelperUtils.BuildFinalQuery(sql, dynamicParameters);
                 _log?.LogAllErrors(ex, tracesqltext);
                 throw;
