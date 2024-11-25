@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace FMSoftlab.DataAccess
@@ -33,10 +34,10 @@ namespace FMSoftlab.DataAccess
             _ownsConnection=false;
             _log=log;
         }
-        public SqlConnectionProvider(string connectionString, bool logServerMessages, ILogger log)
+        public SqlConnectionProvider(IExecutionContext executionContext, ILogger log)
         {
-            SqlConnection con = new SqlConnection(connectionString);
-            if (logServerMessages)
+            SqlConnection con = new SqlConnection(executionContext.ConnectionString);
+            if (executionContext.LogServerMessages)
             {
                 con.InfoMessage += new SqlInfoMessageEventHandler(OnInfoMessage);
             }
@@ -44,7 +45,7 @@ namespace FMSoftlab.DataAccess
             _ownsConnection = true;
             _log=log;
         }
-        public SqlConnectionProvider(string connectionString) : this(connectionString, false, null)
+        public SqlConnectionProvider(string connectionString) : this(new ExecutionContext(connectionString), null)
         {
 
         }
@@ -73,6 +74,8 @@ namespace FMSoftlab.DataAccess
 
         public void Open()
         {
+            if (string.IsNullOrWhiteSpace(_sqlConnection.ConnectionString))
+                throw new ArgumentNullException("No connection string defined");
             if (_sqlConnection.State == ConnectionState.Closed)
             {
                 _sqlConnection.Open();
@@ -85,6 +88,8 @@ namespace FMSoftlab.DataAccess
         }
         public async Task OpenAsync()
         {
+            if (string.IsNullOrWhiteSpace(_sqlConnection.ConnectionString))
+                throw new ArgumentNullException("No connection string defined");
             if (_sqlConnection.State == ConnectionState.Closed)
             {
                 await _sqlConnection.OpenAsync();

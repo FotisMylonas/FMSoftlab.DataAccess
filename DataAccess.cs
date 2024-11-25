@@ -13,121 +13,6 @@ using System.Transactions;
 
 namespace FMSoftlab.DataAccess
 {
-
-    /*public class SqlExecutorBase
-    {
-        private ILogger _log;
-        public SqlExecutorBase(ILogger log)
-        {
-            _log=log;
-        }
-        public async Task Execute(SingleTransactionManager transactionManager, IExecutionContext executionContext, string sql, DynamicParameters dyn, CommandType commandType)
-        {
-            //_log?.LogDebug($"Execute in, ConnectionString:{executionContext.ConnectionString}, Sql:{sql}, CommandTimeout:{executionContext.CommandTimeout}, IsolationLevel:{executionContext.IsolationLevel}");
-            try
-            {
-                transactionManager.BeginTransaction();
-                await transactionManager.Execute(async (connection, transaction) =>
-                {
-                    await connection.ExecuteAsync(sql, dyn, commandTimeout: executionContext.CommandTimeout, transaction: transaction, commandType: commandType);
-                    transactionManager.Commit();
-                });
-            }
-            catch (Exception ex)
-            {
-                _log?.LogAllErrors(ex);
-                throw;
-            }
-        }
-        public async Task<T> ExecuteScalar<T>(ISqlConnectionProvider connectionProvider, IExecutionContext executionContext, string sql, DynamicParameters dyn, CommandType commandType)
-        {
-            //_log?.LogDebug($"Execute in, ConnectionString:{executionContext.ConnectionString}, Sql:{sql}, CommandTimeout:{executionContext.CommandTimeout}, IsolationLevel:{executionContext.IsolationLevel}");
-            T res = default(T);
-
-            try
-            {
-                transactionManager.BeginTransaction();
-                await transactionManager.Execute(async (connection, transaction) =>
-                {
-                    await connection.ExecuteAsync(sql, dyn, commandTimeout: executionContext.CommandTimeout, transaction: transaction, commandType: commandType);
-                    transactionManager.Commit();
-                });
-            }
-            catch (Exception ex)
-            {
-                _log?.LogAllErrors(ex);
-                throw;
-            }
-            return res;
-        }
-        public async Task<IEnumerable<T>> Query<T>(ISqlConnectionProvider connectionProvider, IExecutionContext executionContext, string sql, DynamicParameters dyn, CommandType commandType)
-        {
-            IEnumerable<T> result = Enumerable.Empty<T>();
-            //_log?.LogDebug($"Execute in, ConnectionString:{executionContext.ConnectionString}, Sql:{sql}, CommandTimeout:{executionContext.CommandTimeout}, IsolationLevel:{executionContext.IsolationLevel}");
-            try
-            {
-                if (executionContext.BeginTransaction)
-                {
-                    using (var trans = connectionProvider.BeginTransaction(executionContext.IsolationLevel))
-                    {
-                        var dbres = await connectionProvider.Connection.QueryAsync<T>(sql, dyn, commandTimeout: executionContext.CommandTimeout, transaction: trans, commandType: commandType);
-                        if (dbres != null && dbres.Any())
-                        {
-                            result = dbres;
-                        }
-                        trans.Commit();
-                    }
-                }
-                else
-                {
-                    var dbres = await connectionProvider.Connection.QueryAsync<T>(sql, dyn, commandTimeout: executionContext.CommandTimeout, commandType: commandType);
-                    if (dbres != null && dbres.Any())
-                    {
-                        result = dbres;
-                    }
-                }
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _log?.LogAllErrors(ex);
-                throw;
-            }
-        }
-        public async Task QueryMultiple(ISqlConnectionProvider connectionProvider, IExecutionContext executionContext, string sql, DynamicParameters dyn, CommandType commandType, Action<SqlMapper.GridReader> action)
-        {
-            //_log?.LogDebug($"Execute in, ConnectionString:{executionContext.ConnectionString}, Sql:{sql}, CommandTimeout:{executionContext.CommandTimeout}, IsolationLevel:{executionContext.IsolationLevel}");
-            try
-            {
-                if (executionContext.BeginTransaction)
-                {
-                    using (var trans = connectionProvider.BeginTransaction(executionContext.IsolationLevel))
-                    {
-                        SqlMapper.GridReader gridReader = await connectionProvider.Connection.QueryMultipleAsync(sql, dyn, commandTimeout: executionContext.CommandTimeout, transaction: trans, commandType: commandType);
-                        if (gridReader != null)
-                        {
-                            action(gridReader);
-                        }
-                        trans.Commit();
-                    }
-                }
-                else
-                {
-                    SqlMapper.GridReader gridReader = await connectionProvider.Connection.QueryMultipleAsync(sql, dyn, commandTimeout: executionContext.CommandTimeout, commandType: commandType);
-                    if (gridReader != null)
-                    {
-                        action(gridReader);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _log?.LogAllErrors(ex);
-                throw;
-            }
-        }
-    }*/
-
     public class SqlExecution
     {
         private readonly bool _startsTransaction;
@@ -147,16 +32,7 @@ namespace FMSoftlab.DataAccess
             _log=log;
             _startsTransaction=true;
         }
-
-        public SqlExecution(IExecutionContext executionContext, string sql, DynamicParameters dyn, ILogger log)
-        {
-            _executionContext=executionContext;
-            _sql=sql;
-            _dyn=dyn;
-            _commandType=CommandType.StoredProcedure;
-            _log=log;
-            _startsTransaction=true;
-        }
+        public SqlExecution(IExecutionContext executionContext, string sql, DynamicParameters dyn, ILogger log) : this(executionContext, sql, dyn, CommandType.StoredProcedure, log) { }
 
         public SqlExecution(IExecutionContext executionContext, ISingleTransactionManager singleTransactionManager, string sql, DynamicParameters dyn, CommandType commandType, ILogger log)
         {
@@ -169,16 +45,7 @@ namespace FMSoftlab.DataAccess
             _startsTransaction=false;
         }
 
-        public SqlExecution(IExecutionContext executionContext, ISingleTransactionManager singleTransactionManager, string sql, DynamicParameters dyn, ILogger log)
-        {
-            _executionContext=executionContext;
-            _sql=sql;
-            _dyn=dyn;
-            _commandType=CommandType.StoredProcedure;
-            _log=log;
-            _singleTransactionManager=singleTransactionManager;
-            _startsTransaction=false;
-        }
+        public SqlExecution(IExecutionContext executionContext, ISingleTransactionManager singleTransactionManager, string sql, DynamicParameters dyn, ILogger log) : this(executionContext, singleTransactionManager, sql, dyn, CommandType.StoredProcedure, log) { }
 
         public async Task Execute()
         {
@@ -203,7 +70,6 @@ namespace FMSoftlab.DataAccess
                 }
             }
         }
-
         public async Task<IEnumerable<T>> Query<T>()
         {
             IEnumerable<T> res = Enumerable.Empty<T>();
