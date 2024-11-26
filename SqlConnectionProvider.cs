@@ -53,13 +53,13 @@ namespace FMSoftlab.DataAccess
         public IDbTransaction BeginTransaction(IsolationLevel iso)
         {
             Open();
-            _log?.LogDebug("Begin transaction with isolation level {IsolationLevel}", iso);
+            _log?.LogTrace("Begin transaction with isolation level {IsolationLevel}", iso);
             return _sqlConnection.BeginTransaction(iso);
         }
         public async Task<IDbTransaction> BeginTransactionAsync(IsolationLevel iso)
         {
             await OpenAsync();
-            _log?.LogDebug("Begin transaction with isolation level {IsolationLevel}", iso);
+            _log?.LogTrace("Begin transaction with isolation level {IsolationLevel}", iso);
             return _sqlConnection.BeginTransaction(iso);
         }
 
