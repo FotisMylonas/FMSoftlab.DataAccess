@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Transactions;
@@ -121,14 +123,8 @@ namespace FMSoftlab.DataAccess
                     await BeginTransactionAsync();
                 else _log?.LogDebug("Willl not start transaction");
                 string tracesqltext = SqlHelperUtils.BuildFinalQuery(sql, dynamicParameters);
-                _log?.LogDebug("will execute sql, serverprocessid: {1}, clientconnectionid: {2}," +
-                    " isolation level: {3}, connection string: {4}," +
-                    Environment.NewLine+"sql:{5}}",
-                    _connectionProvider.Connection.ServerProcessId,
-                    _connectionProvider.Connection.ClientConnectionId,
-                    _tranaction?.IsolationLevel,
-                    _connectionProvider.Connection.ConnectionString,
-                    tracesqltext);
+                string message = $@"will execute sql, serverprocessid: {_connectionProvider.Connection.ServerProcessId}, clientconnectionid: {_connectionProvider.Connection.ClientConnectionId}, isolation level: {_tranaction?.IsolationLevel}, connection string: {_connectionProvider.Connection.ConnectionString},sql:{tracesqltext}";
+                _log?.LogDebug(message);
                 await execute(_connectionProvider.Connection, _tranaction);
                 if (startsTransaction)
                     Commit();
@@ -154,12 +150,34 @@ namespace FMSoftlab.DataAccess
         public static string BuildFinalQuery(string commandText, DynamicParameters parameters)
         {
             if (string.IsNullOrWhiteSpace(commandText))
-                throw new ArgumentNullException(nameof(commandText), "Command text cannot be null or empty.");
+                return string.Empty;
 
-            var sb = new StringBuilder();
-
-            if (parameters != null)
+            if (parameters is null)
             {
+                return string.Empty;
+            }
+            var sb = new StringBuilder();
+            try
+            {
+                var propertyInfo = typeof(DynamicParameters).GetField("templates", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (propertyInfo != null)
+                {
+                    var templates = propertyInfo.GetValue(parameters) as IEnumerable<object>;
+                    if (templates!=null)
+                    {
+                        foreach (object template in templates)
+                        {
+                            var properties = template.GetType().GetProperties();
+                            foreach (var property in properties)
+                            {
+                                object value = property.GetValue(template);
+                                string sqlType = GetSqlType(value);
+                                string formattedValue = FormatValue(value);
+                                sb.AppendLine($"DECLARE @{property.Name} {sqlType} = {formattedValue};");
+                            }
+                        }
+                    }
+                }
                 foreach (var paramName in parameters.ParameterNames)
                 {
                     object value = parameters.Get<object>(paramName);
@@ -167,6 +185,10 @@ namespace FMSoftlab.DataAccess
                     string formattedValue = FormatValue(value);
                     sb.AppendLine($"DECLARE @{paramName} {sqlType} = {formattedValue};");
                 }
+            }
+            catch (Exception)
+            {
+
             }
             sb.AppendLine();
             sb.AppendLine(commandText);
