@@ -1,5 +1,5 @@
 ﻿using Dapper;
-using FmSoftlab.Logging;
+using FMSoftlab.Logging;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System;

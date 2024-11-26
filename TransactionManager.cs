@@ -1,5 +1,5 @@
 ﻿using Dapper;
-using FmSoftlab.Logging;
+using FMSoftlab.Logging;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System;
@@ -123,8 +123,9 @@ namespace FMSoftlab.DataAccess
                     await BeginTransactionAsync();
                 else _log?.LogDebug("Willl not start transaction");
                 string tracesqltext = SqlHelperUtils.BuildFinalQuery(sql, dynamicParameters);
-                string message = $@"will execute sql, serverprocessid: {_connectionProvider.Connection.ServerProcessId}, clientconnectionid: {_connectionProvider.Connection.ClientConnectionId}, isolation level: {_tranaction?.IsolationLevel}, connection string: {_connectionProvider.Connection.ConnectionString},sql:{tracesqltext}";
-                _log?.LogDebug(message);
+                _log?.LogDebug($"Will execute sql, serverprocessid: {_connectionProvider.Connection.ServerProcessId}, clientconnectionid: {_connectionProvider.Connection.ClientConnectionId}, isolation level: {_tranaction?.IsolationLevel}");
+                _log?.LogDebug("{ConnectionString}", _connectionProvider.Connection.ConnectionString);
+                _log?.LogDebug("{tracesqltext}", tracesqltext);
                 await execute(_connectionProvider.Connection, _tranaction);
                 if (startsTransaction)
                     Commit();
