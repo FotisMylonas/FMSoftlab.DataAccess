@@ -53,13 +53,13 @@ namespace FMSoftlab.DataAccess
         public IDbTransaction BeginTransaction(IsolationLevel iso)
         {
             Open();
-            _log.LogDebug("Begin transaction with isolation level {IsolationLevel}", iso);
+            _log?.LogDebug("Begin transaction with isolation level {IsolationLevel}", iso);
             return _sqlConnection.BeginTransaction(iso);
         }
         public async Task<IDbTransaction> BeginTransactionAsync(IsolationLevel iso)
         {
             await OpenAsync();
-            _log.LogDebug("Begin transaction with isolation level {IsolationLevel}", iso);
+            _log?.LogDebug("Begin transaction with isolation level {IsolationLevel}", iso);
             return _sqlConnection.BeginTransaction(iso);
         }
 
@@ -80,12 +80,12 @@ namespace FMSoftlab.DataAccess
                 throw new ArgumentNullException("No connection string defined");
             if (_sqlConnection.State == ConnectionState.Closed)
             {
-                _log.LogDebug("Opening connection {ConnectionString}...", _sqlConnection.ConnectionString);
+                _log?.LogDebug("Opening connection {ConnectionString}...", _sqlConnection.ConnectionString);
                 _sqlConnection.Open();
             }
             if (_sqlConnection.State == ConnectionState.Broken)
             {
-                _log.LogDebug("Connection broken, {ConnectionString}...", _sqlConnection.ConnectionString);
+                _log?.LogDebug("Connection broken, {ConnectionString}...", _sqlConnection.ConnectionString);
                 _sqlConnection.Close();
                 _sqlConnection.Open();
             }
@@ -96,12 +96,12 @@ namespace FMSoftlab.DataAccess
                 throw new ArgumentNullException("No connection string defined");
             if (_sqlConnection.State == ConnectionState.Closed)
             {
-                _log.LogDebug("Opening connection {ConnectionString}...", _sqlConnection.ConnectionString);
+                _log?.LogDebug("Opening connection {ConnectionString}...", _sqlConnection.ConnectionString);
                 await _sqlConnection.OpenAsync();
             }
             if (_sqlConnection.State == ConnectionState.Broken)
             {
-                _log.LogDebug("Connection broken, {ConnectionString}...", _sqlConnection.ConnectionString);
+                _log?.LogDebug("Connection broken, {ConnectionString}...", _sqlConnection.ConnectionString);
                 _sqlConnection.Close();
                 await _sqlConnection.OpenAsync();
             }

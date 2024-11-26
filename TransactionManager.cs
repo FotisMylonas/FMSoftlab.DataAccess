@@ -120,7 +120,12 @@ namespace FMSoftlab.DataAccess
                 if (startsTransaction)
                     await BeginTransactionAsync();
                 else _log?.LogDebug("Willl not start transaction");
-                _log?.LogDebug("will execute sql: {0}", sql);
+                _log?.LogDebug("will execute sql: {0}, serverprocessid: {1}, clientconnectionid: {2}, isolation level:{3}, connection string:{4}",
+                    sql,
+                    _connectionProvider.Connection.ServerProcessId,
+                    _connectionProvider.Connection.ClientConnectionId,
+                    _tranaction?.IsolationLevel,
+                    _connectionProvider.Connection.ConnectionString);
                 await execute(_connectionProvider.Connection, _tranaction);
                 if (startsTransaction)
                     Commit();
