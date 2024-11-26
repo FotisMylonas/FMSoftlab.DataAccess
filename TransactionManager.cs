@@ -77,6 +77,7 @@ namespace FMSoftlab.DataAccess
             catch (Exception ex)
             {
                 _log?.LogAllErrors(ex);
+                throw;
             }
         }
         public void Rollback()
@@ -107,6 +108,7 @@ namespace FMSoftlab.DataAccess
             catch (Exception ex)
             {
                 _log?.LogAllErrors(ex);
+                throw;
             }
         }
         public async Task Execute(bool startsTransaction, string sql, DynamicParameters dynamicParameters, Func<IDbConnection, IDbTransaction, Task> execute)
@@ -117,14 +119,18 @@ namespace FMSoftlab.DataAccess
             {
                 if (startsTransaction)
                     await BeginTransactionAsync();
+                else _log?.LogDebug("Willl not start transaction");
+                _log?.LogDebug("will execute sql: {0}", sql);
                 await execute(_connectionProvider.Connection, _tranaction);
                 if (startsTransaction)
                     Commit();
+                else _log?.LogDebug("Willl not commit transaction");
             }
             catch (Exception ex)
             {
                 if (startsTransaction)
                     Rollback();
+                else _log?.LogDebug("Willl not rollback transaction");
                 string tracesqltext = SqlHelperUtils.BuildFinalQuery(sql, dynamicParameters);
                 _log?.LogAllErrors(ex, tracesqltext);
                 throw;
