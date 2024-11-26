@@ -62,7 +62,7 @@ namespace FMSoftlab.DataAccess
                 try
                 {
                     _tranaction.Commit();
-                    _log?.LogInformation("Transaction Committed!");
+                    _log?.LogTrace("Transaction Committed!");
                 }
                 finally
                 {
@@ -93,7 +93,7 @@ namespace FMSoftlab.DataAccess
                 try
                 {
                     _tranaction.Rollback();
-                    _log?.LogWarning("Transaction rollbacked");
+                    _log?.LogWarning("Transaction rollback!");
                 }
                 finally
                 {
@@ -121,21 +121,26 @@ namespace FMSoftlab.DataAccess
             {
                 if (startsTransaction)
                     await BeginTransactionAsync();
-                else _log?.LogDebug("Willl not start transaction");
                 string tracesqltext = SqlHelperUtils.BuildFinalQuery(sql, dynamicParameters);
-                _log?.LogDebug($"Will execute sql, serverprocessid: {_connectionProvider.Connection.ServerProcessId}, clientconnectionid: {_connectionProvider.Connection.ClientConnectionId}, isolation level: {_tranaction?.IsolationLevel}");
-                _log?.LogDebug("{ConnectionString}", _connectionProvider.Connection.ConnectionString);
-                _log?.LogDebug("{tracesqltext}", tracesqltext);
+                _log?.LogTrace("Will execute sql, ConnectionString:{0}, " +
+                    "isolation level: {1}, " +
+                    "sql:{2l}, " +
+                    "ServerProcessId:{3}, " +
+                    "clientconnectionid:{4}", 
+                    _connectionProvider.Connection.ConnectionString,
+                    _tranaction?.IsolationLevel,
+                    tracesqltext,
+                    _connectionProvider.Connection.ServerProcessId,
+                    _connectionProvider.Connection.ClientConnectionId);
+                //_log?.LogDebug("{tracesqltext}", tracesqltext);
                 await execute(_connectionProvider.Connection, _tranaction);
                 if (startsTransaction)
                     Commit();
-                else _log?.LogDebug("Willl not commit transaction");
             }
             catch (Exception ex)
             {
                 if (startsTransaction)
                     Rollback();
-                else _log?.LogDebug("Willl not rollback transaction");
                 string tracesqltext = SqlHelperUtils.BuildFinalQuery(sql, dynamicParameters);
                 _log?.LogAllErrors(ex, tracesqltext);
                 throw;
