@@ -26,6 +26,7 @@ namespace FMSoftlab.DataAccess
         private ISqlConnectionProvider _connectionProvider;
         private IExecutionContext _executionContext;
         private ILogger _log;
+        private readonly bool _ownsConnection;
 
         public SingleTransactionManager(ISqlConnectionProvider connectionProvider, IExecutionContext executionContext, ILogger log)
         {
@@ -33,7 +34,17 @@ namespace FMSoftlab.DataAccess
             _executionContext =executionContext;
             _tranaction=null;
             _log =log;
+            _ownsConnection=false;
         }
+        public SingleTransactionManager(IExecutionContext executionContext, ILogger log)
+        {
+            _executionContext =executionContext;
+            _tranaction=null;
+            _log =log;
+            _connectionProvider=new SqlConnectionProvider(executionContext, _log);
+            _ownsConnection=true;
+        }
+
         public IDbTransaction BeginTransaction()
         {
             if (_tranaction==null)
@@ -96,14 +107,7 @@ namespace FMSoftlab.DataAccess
                 }
                 finally
                 {
-                    try
-                    {
-                        _tranaction.Dispose();
-                    }
-                    finally
-                    {
-                        _tranaction=null;
-                    }
+                    _tranaction=null;
                 }
             }
             catch (Exception ex)
@@ -112,20 +116,20 @@ namespace FMSoftlab.DataAccess
                 throw;
             }
         }
-        public async Task Execute(bool startsTransaction, string sql, DynamicParameters dynamicParameters, Func<IDbConnection, IDbTransaction, Task> execute)
+        public async Task Execute(bool newTransaction, string sql, DynamicParameters dynamicParameters, Func<IDbConnection, IDbTransaction, Task> execute)
         {
             if (string.IsNullOrWhiteSpace(sql))
                 return;
             try
             {
-                if (startsTransaction)
+                if (newTransaction)
                     await BeginTransactionAsync();
                 string tracesqltext = SqlHelperUtils.BuildFinalQuery(sql, dynamicParameters);
                 _log?.LogTrace("Will execute sql, ConnectionString:{0}, " +
                     "isolation level: {1}, " +
                     "sql:{2l}, " +
                     "ServerProcessId:{3}, " +
-                    "clientconnectionid:{4}", 
+                    "clientconnectionid:{4}",
                     _connectionProvider.Connection.ConnectionString,
                     _tranaction?.IsolationLevel,
                     tracesqltext,
@@ -133,12 +137,12 @@ namespace FMSoftlab.DataAccess
                     _connectionProvider.Connection.ClientConnectionId);
                 //_log?.LogDebug("{tracesqltext}", tracesqltext);
                 await execute(_connectionProvider.Connection, _tranaction);
-                if (startsTransaction)
+                if (newTransaction)
                     Commit();
             }
             catch (Exception ex)
             {
-                if (startsTransaction)
+                if (newTransaction)
                     Rollback();
                 string tracesqltext = SqlHelperUtils.BuildFinalQuery(sql, dynamicParameters);
                 _log?.LogAllErrors(ex, tracesqltext);
@@ -147,7 +151,17 @@ namespace FMSoftlab.DataAccess
         }
         public void Dispose()
         {
-            Rollback();
+            try
+            {
+                Rollback();
+            }
+            finally
+            {
+                if (_ownsConnection)
+                {
+                    _connectionProvider?.Dispose();
+                }
+            }
         }
     }
     public static class SqlHelperUtils

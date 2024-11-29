@@ -23,7 +23,6 @@ namespace FMSoftlab.DataAccess
         private readonly bool _ownsConnection;
         private readonly SqlConnection _sqlConnection;
         private readonly ILogger _log;
-
         public SqlConnectionProvider(SqlConnection sqlConnection, bool logServerMessages, ILogger log)
         {
             if (logServerMessages)
@@ -73,11 +72,17 @@ namespace FMSoftlab.DataAccess
                 _log?.LogError(@"{Message} Procedure:{Procedure}, Line:{LineNumber}, Server:{Server}", info.Message, info.Procedure, info.LineNumber, info.Server);
             }
         }
+        private void ValidateConnection()
+        {
+            if (_sqlConnection is null)
+                throw new ArgumentNullException("No connection defined");
+            if (string.IsNullOrWhiteSpace(_sqlConnection.ConnectionString))
+                throw new ArgumentNullException("No connection string defined");
+        }
 
         public void Open()
         {
-            if (string.IsNullOrWhiteSpace(_sqlConnection.ConnectionString))
-                throw new ArgumentNullException("No connection string defined");
+            ValidateConnection();
             if (_sqlConnection.State == ConnectionState.Closed)
             {
                 _log?.LogDebug("Opening connection {ConnectionString}...", _sqlConnection.ConnectionString);
@@ -90,10 +95,26 @@ namespace FMSoftlab.DataAccess
                 _sqlConnection.Open();
             }
         }
+        public void Close()
+        {
+            ValidateConnection();
+            if (!_ownsConnection)
+                return;
+            if (_sqlConnection.State == ConnectionState.Open)
+            {
+                _log?.LogDebug("Closing connection {ConnectionString}...", _sqlConnection.ConnectionString);
+                _sqlConnection.Close();
+            }
+            if (_sqlConnection.State == ConnectionState.Broken)
+            {
+                _log?.LogDebug("Connection broken, Closing connection, {ConnectionString}...", _sqlConnection.ConnectionString);
+                _sqlConnection.Close();
+            }
+        }
+
         public async Task OpenAsync()
         {
-            if (string.IsNullOrWhiteSpace(_sqlConnection.ConnectionString))
-                throw new ArgumentNullException("No connection string defined");
+            ValidateConnection();
             if (_sqlConnection.State == ConnectionState.Closed)
             {
                 _log?.LogDebug("Opening connection {ConnectionString}...", _sqlConnection.ConnectionString);
@@ -108,16 +129,17 @@ namespace FMSoftlab.DataAccess
         }
         public void Dispose()
         {
-            if (_ownsConnection)
+            if (!_ownsConnection)
             {
-                try
-                {
-                    _sqlConnection.Close();
-                }
-                finally
-                {
-                    _sqlConnection.Dispose();
-                }
+                return;
+            }
+            try
+            {
+                Close();
+            }
+            finally
+            {
+                _sqlConnection.Dispose();
             }
         }
         public SqlConnection Connection { get { return _sqlConnection; } }

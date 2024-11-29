@@ -14,7 +14,7 @@ namespace FMSoftlab.DataAccess
 {
     public class SqlExecution
     {
-        private readonly bool _startsTransaction;
+        private readonly bool _ownsTransaction;
         private readonly ISingleTransactionManager _singleTransactionManager;
         private readonly string _sql;
         private readonly DynamicParameters _dyn;
@@ -29,7 +29,8 @@ namespace FMSoftlab.DataAccess
             _dyn=dyn;
             _commandType=commandType;
             _log=log;
-            _startsTransaction=true;
+            _ownsTransaction=true;
+            _singleTransactionManager=new SingleTransactionManager(executionContext, log);
         }
         public SqlExecution(IExecutionContext executionContext, string sql, DynamicParameters dyn, ILogger log) : this(executionContext, sql, dyn, CommandType.StoredProcedure, log) { }
 
@@ -41,17 +42,16 @@ namespace FMSoftlab.DataAccess
             _commandType=commandType;
             _log=log;
             _singleTransactionManager = singleTransactionManager;
-            _startsTransaction=false;
+            _ownsTransaction=false;
         }
 
         public SqlExecution(IExecutionContext executionContext, ISingleTransactionManager singleTransactionManager, string sql, DynamicParameters dyn, ILogger log) : this(executionContext, singleTransactionManager, sql, dyn, CommandType.StoredProcedure, log) { }
 
         public async Task Execute()
         {
-            ISingleTransactionManager tm = _singleTransactionManager ?? new SingleTransactionManager(new SqlConnectionProvider(_executionContext.ConnectionString), _executionContext, _log);
             try
             {
-                await tm.Execute(_startsTransaction, _sql, _dyn, async (connection, transaction) =>
+                await _singleTransactionManager.Execute(_ownsTransaction, _sql, _dyn, async (connection, transaction) =>
                 {
                     await connection.ExecuteAsync(
                         _sql,
@@ -63,19 +63,18 @@ namespace FMSoftlab.DataAccess
             }
             finally
             {
-                if (_startsTransaction)
+                if (_ownsTransaction)
                 {
-                    tm.Dispose();
+                    _singleTransactionManager.Dispose();
                 }
             }
         }
         public async Task<IEnumerable<T>> Query<T>()
         {
             IEnumerable<T> res = Enumerable.Empty<T>();
-            ISingleTransactionManager tm = _singleTransactionManager ?? new SingleTransactionManager(new SqlConnectionProvider(_executionContext.ConnectionString), _executionContext, _log);
             try
             {
-                await tm.Execute(_startsTransaction, _sql, _dyn, async (connection, transaction) =>
+                await _singleTransactionManager.Execute(_ownsTransaction, _sql, _dyn, async (connection, transaction) =>
                 {
                     res = await connection.QueryAsync<T>(
                         _sql,
@@ -88,9 +87,9 @@ namespace FMSoftlab.DataAccess
             }
             finally
             {
-                if (_startsTransaction)
+                if (_ownsTransaction)
                 {
-                    tm.Dispose();
+                    _singleTransactionManager.Dispose();
                 }
             }
         }
@@ -104,10 +103,9 @@ namespace FMSoftlab.DataAccess
         }
         public async Task QueryMultiple(Action<SqlMapper.GridReader> action)
         {
-            ISingleTransactionManager tm = _singleTransactionManager ?? new SingleTransactionManager(new SqlConnectionProvider(_executionContext.ConnectionString), _executionContext, _log);
             try
             {
-                await tm.Execute(_startsTransaction, _sql, _dyn, async (connection, transaction) =>
+                await _singleTransactionManager.Execute(_ownsTransaction, _sql, _dyn, async (connection, transaction) =>
                 {
                     var reader = await connection.QueryMultipleAsync(
                         _sql,
@@ -120,19 +118,18 @@ namespace FMSoftlab.DataAccess
             }
             finally
             {
-                if (_startsTransaction)
+                if (_ownsTransaction)
                 {
-                    tm.Dispose();
+                    _singleTransactionManager.Dispose();
                 }
             }
         }
         public async Task<T> ExecuteScalar<T>()
         {
             T res = default(T);
-            ISingleTransactionManager tm = _singleTransactionManager ?? new SingleTransactionManager(new SqlConnectionProvider(_executionContext.ConnectionString), _executionContext, _log);
             try
             {
-                await tm.Execute(_startsTransaction, _sql, _dyn, async (connection, transaction) =>
+                await _singleTransactionManager.Execute(_ownsTransaction, _sql, _dyn, async (connection, transaction) =>
                 {
                     res = await connection.ExecuteScalarAsync<T>(
                         _sql,
@@ -145,9 +142,9 @@ namespace FMSoftlab.DataAccess
             }
             finally
             {
-                if (_startsTransaction)
+                if (_ownsTransaction)
                 {
-                    tm.Dispose();
+                    _singleTransactionManager.Dispose();
                 }
             }
         }
