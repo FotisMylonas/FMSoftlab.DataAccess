@@ -87,12 +87,14 @@ namespace FMSoftlab.DataAccess
             {
                 _log?.LogDebug("Opening connection {ConnectionString}...", _sqlConnection.ConnectionString);
                 _sqlConnection.Open();
+                _log?.LogTrace("Opened connection {ConnectionString}, ServerProcessId: {ServerProcessId}, ClientConnectionId: {ClientConnectionId}...", _sqlConnection.ConnectionString, _sqlConnection.ServerProcessId, _sqlConnection.ClientConnectionId);
             }
             if (_sqlConnection.State == ConnectionState.Broken)
             {
-                _log?.LogDebug("Connection broken, {ConnectionString}...", _sqlConnection.ConnectionString);
+                _log?.LogDebug("Connection is broken, will open again {ConnectionString}...", _sqlConnection.ConnectionString);
                 _sqlConnection.Close();
                 _sqlConnection.Open();
+                _log?.LogTrace("Connection was broken, opened again {ConnectionString}, ServerProcessId: {ServerProcessId}, ClientConnectionId: {ClientConnectionId}...", _sqlConnection.ConnectionString, _sqlConnection.ServerProcessId, _sqlConnection.ClientConnectionId);
             }
         }
         public void Close()
@@ -102,12 +104,12 @@ namespace FMSoftlab.DataAccess
                 return;
             if (_sqlConnection.State == ConnectionState.Open)
             {
-                _log?.LogDebug("Closing connection {ConnectionString}...", _sqlConnection.ConnectionString);
+                _log?.LogTrace("Closing connection {ConnectionString}...", _sqlConnection.ConnectionString);
                 _sqlConnection.Close();
             }
             if (_sqlConnection.State == ConnectionState.Broken)
             {
-                _log?.LogDebug("Connection broken, Closing connection, {ConnectionString}...", _sqlConnection.ConnectionString);
+                _log?.LogTrace("Connection broken, Closing connection, {ConnectionString}...", _sqlConnection.ConnectionString);
                 _sqlConnection.Close();
             }
         }
@@ -119,12 +121,14 @@ namespace FMSoftlab.DataAccess
             {
                 _log?.LogDebug("Opening connection {ConnectionString}...", _sqlConnection.ConnectionString);
                 await _sqlConnection.OpenAsync();
+                _log?.LogTrace("Opened connection {ConnectionString}, ServerProcessId: {ServerProcessId}, ClientConnectionId: {ClientConnectionId}...", _sqlConnection.ConnectionString, _sqlConnection.ServerProcessId, _sqlConnection.ClientConnectionId);
             }
             if (_sqlConnection.State == ConnectionState.Broken)
             {
-                _log?.LogDebug("Connection broken, {ConnectionString}...", _sqlConnection.ConnectionString);
+                _log?.LogDebug("Connection is broken, will open again {ConnectionString}...", _sqlConnection.ConnectionString);
                 _sqlConnection.Close();
                 await _sqlConnection.OpenAsync();
+                _log?.LogTrace("Connection was broken, opened again {ConnectionString}, ServerProcessId: {ServerProcessId}, ClientConnectionId: {ClientConnectionId}...", _sqlConnection.ConnectionString, _sqlConnection.ServerProcessId, _sqlConnection.ClientConnectionId);
             }
         }
         public void Dispose()
@@ -140,6 +144,7 @@ namespace FMSoftlab.DataAccess
             finally
             {
                 _sqlConnection.Dispose();
+                _log?.LogTrace("Connection disposed");
             }
         }
         public SqlConnection Connection { get { return _sqlConnection; } }

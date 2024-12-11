@@ -1,11 +1,10 @@
-﻿
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.34322.80
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FMSoftlab.DataAccess", "FMSoftlab.DataAccess.csproj", "{8F71245C-EA4F-4B0E-9163-83561320A496}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FMSoftlab.DataAccess", "FMSoftlab.DataAccess\FMSoftlab.DataAccess.csproj", "{8F71245C-EA4F-4B0E-9163-83561320A496}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FMSoftlab.DataAccess.Tests", "..\FMSoftlab.DataAccess.Tests\FMSoftlab.DataAccess.Tests.csproj", "{EF81DED1-920B-4C9D-A42F-F5D79E90D88D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FMSoftlab.DataAccess.Tests", "FMSoftlab.DataAccess.Tests\FMSoftlab.DataAccess.Tests.csproj", "{EF81DED1-920B-4C9D-A42F-F5D79E90D88D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
