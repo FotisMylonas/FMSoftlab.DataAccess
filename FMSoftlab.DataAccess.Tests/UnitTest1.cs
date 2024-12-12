@@ -111,7 +111,7 @@ namespace FMSoftlab.DataAccess.Tests
                     SqlExecution execution = new SqlExecution(context, tm, "Select @Id as Id", dyn, CommandType.Text, null);
                     await execution.QueryMultiple(async (x) =>
                     {
-                        var dr = await x.ReadAsync<int>();
+                        var dr = await x.ReadAsync<int>(buffered:false);
                         id=dr.FirstOrDefault<int>();
                     });
                     tm.Rollback();
@@ -146,7 +146,7 @@ namespace FMSoftlab.DataAccess.Tests
             SqlExecution execution = new SqlExecution(context, "Select @Id as Id", dyn, CommandType.Text, null);
             await execution.QueryMultiple(async (x) =>
             {
-                var dr = await x.ReadAsync<int>();
+                var dr = await x.ReadAsync<int>(buffered: false);
                 id=dr.FirstOrDefault<int>();
             });
             Assert.Equal(CheckValue, id);
