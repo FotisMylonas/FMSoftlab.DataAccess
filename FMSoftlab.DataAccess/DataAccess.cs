@@ -93,6 +93,10 @@ namespace FMSoftlab.DataAccess
                 }
             }
         }
+        public async Task<IEnumerable<dynamic>> Query()
+        {
+            return await Query<dynamic>();
+        }
         public async Task<T> FirstOrDefault<T>()
         {
             T res = default(T);
@@ -147,6 +151,10 @@ namespace FMSoftlab.DataAccess
                     _singleTransactionManager.Dispose();
                 }
             }
+        }
+        public async Task<object> ExecuteScalar()
+        {
+            return await ExecuteScalar<object>();
         }
     }
 }
