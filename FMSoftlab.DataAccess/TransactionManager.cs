@@ -18,7 +18,7 @@ namespace FMSoftlab.DataAccess
         void Rollback();
         IDbTransaction BeginTransaction();
         Task<IDbTransaction> BeginTransactionAsync();
-        Task Execute(bool startsTransaction, string sql, DynamicParameters dynamicParameters, Func<IDbConnection, IDbTransaction, Task> execute);
+        Task Execute(bool startsTransaction, string sql, object parameters, Func<IDbConnection, IDbTransaction, Task> execute);
     }
     public class SingleTransactionManager : ISingleTransactionManager
     {
@@ -116,7 +116,7 @@ namespace FMSoftlab.DataAccess
                 throw;
             }
         }
-        public async Task Execute(bool newTransaction, string sql, DynamicParameters dynamicParameters, Func<IDbConnection, IDbTransaction, Task> execute)
+        public async Task Execute(bool newTransaction, string sql, object parameters, Func<IDbConnection, IDbTransaction, Task> execute)
         {
             if (string.IsNullOrWhiteSpace(sql))
                 return;
@@ -124,7 +124,7 @@ namespace FMSoftlab.DataAccess
             {
                 if (newTransaction)
                     await BeginTransactionAsync();
-                string tracesqltext = SqlHelperUtils.BuildFinalQuery(sql, dynamicParameters);
+                string tracesqltext = SqlHelperUtils.BuildFinalQuery(sql, parameters);
                 _log?.LogTrace("Will execute sql, ConnectionString:{0}, " +
                     "isolation level: {1}, " +
                     "sql:{2l}, " +
@@ -144,7 +144,7 @@ namespace FMSoftlab.DataAccess
             {
                 if (newTransaction)
                     Rollback();
-                string tracesqltext = SqlHelperUtils.BuildFinalQuery(sql, dynamicParameters);
+                string tracesqltext = SqlHelperUtils.BuildFinalQuery(sql, parameters);
                 _log?.LogAllErrors(ex, tracesqltext);
                 throw;
             }
@@ -166,12 +166,16 @@ namespace FMSoftlab.DataAccess
     }
     public static class SqlHelperUtils
     {
-        public static string BuildFinalQuery(string commandText, DynamicParameters parameters)
+        public static string BuildFinalQuery(string commandText, object parameters)
         {
             if (string.IsNullOrWhiteSpace(commandText))
                 return string.Empty;
 
             if (parameters is null)
+            {
+                return string.Empty;
+            }
+            if (!(parameters is DynamicParameters sqlDynamicParams))
             {
                 return string.Empty;
             }
@@ -181,7 +185,7 @@ namespace FMSoftlab.DataAccess
                 var propertyInfo = typeof(DynamicParameters).GetField("templates", BindingFlags.NonPublic | BindingFlags.Instance);
                 if (propertyInfo != null)
                 {
-                    var templates = propertyInfo.GetValue(parameters) as IEnumerable<object>;
+                    var templates = propertyInfo.GetValue(sqlDynamicParams) as IEnumerable<object>;
                     if (templates!=null)
                     {
                         foreach (object template in templates)
@@ -197,9 +201,9 @@ namespace FMSoftlab.DataAccess
                         }
                     }
                 }
-                foreach (var paramName in parameters.ParameterNames)
+                foreach (var paramName in sqlDynamicParams.ParameterNames)
                 {
-                    object value = parameters.Get<object>(paramName);
+                    object value = sqlDynamicParams.Get<object>(paramName);
                     string sqlType = GetSqlType(value);
                     string formattedValue = FormatValue(value);
                     sb.AppendLine($"DECLARE @{paramName} {sqlType} = {formattedValue};");

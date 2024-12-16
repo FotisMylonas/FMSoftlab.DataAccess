@@ -17,45 +17,45 @@ namespace FMSoftlab.DataAccess
         private readonly bool _ownsTransaction;
         private readonly ISingleTransactionManager _singleTransactionManager;
         private readonly string _sql;
-        private readonly DynamicParameters _dyn;
+        private readonly object _parameters;
         private readonly CommandType _commandType;
         private readonly IExecutionContext _executionContext;
         private readonly ILogger _log;
 
-        public SqlExecution(IExecutionContext executionContext, string sql, DynamicParameters dyn, CommandType commandType, ILogger log)
+        public SqlExecution(IExecutionContext executionContext, string sql, object parameters, CommandType commandType, ILogger log)
         {
             _executionContext=executionContext;
             _sql=sql;
-            _dyn=dyn;
+            _parameters=parameters;
             _commandType=commandType;
             _log=log;
             _ownsTransaction=true;
             _singleTransactionManager=new SingleTransactionManager(executionContext, log);
         }
-        public SqlExecution(IExecutionContext executionContext, string sql, DynamicParameters dyn, ILogger log) : this(executionContext, sql, dyn, CommandType.StoredProcedure, log) { }
+        public SqlExecution(IExecutionContext executionContext, string sql, object parameters, ILogger log) : this(executionContext, sql, parameters, CommandType.StoredProcedure, log) { }
 
-        public SqlExecution(IExecutionContext executionContext, ISingleTransactionManager singleTransactionManager, string sql, DynamicParameters dyn, CommandType commandType, ILogger log)
+        public SqlExecution(IExecutionContext executionContext, ISingleTransactionManager singleTransactionManager, string sql, object parameters, CommandType commandType, ILogger log)
         {
             _executionContext=executionContext;
             _sql=sql;
-            _dyn=dyn;
+            _parameters=parameters;
             _commandType=commandType;
             _log=log;
             _singleTransactionManager = singleTransactionManager;
             _ownsTransaction=false;
         }
 
-        public SqlExecution(IExecutionContext executionContext, ISingleTransactionManager singleTransactionManager, string sql, DynamicParameters dyn, ILogger log) : this(executionContext, singleTransactionManager, sql, dyn, CommandType.StoredProcedure, log) { }
+        public SqlExecution(IExecutionContext executionContext, ISingleTransactionManager singleTransactionManager, string sql, object parameters, ILogger log) : this(executionContext, singleTransactionManager, sql, parameters, CommandType.StoredProcedure, log) { }
 
         public async Task Execute()
         {
             try
             {
-                await _singleTransactionManager.Execute(_ownsTransaction, _sql, _dyn, async (connection, transaction) =>
+                await _singleTransactionManager.Execute(_ownsTransaction, _sql, _parameters, async (connection, transaction) =>
                 {
                     await connection.ExecuteAsync(
                         _sql,
-                        _dyn,
+                        _parameters,
                         commandTimeout: _executionContext.CommandTimeout,
                         transaction: transaction,
                         commandType: _commandType);
@@ -74,11 +74,11 @@ namespace FMSoftlab.DataAccess
             IEnumerable<T> res = Enumerable.Empty<T>();
             try
             {
-                await _singleTransactionManager.Execute(_ownsTransaction, _sql, _dyn, async (connection, transaction) =>
+                await _singleTransactionManager.Execute(_ownsTransaction, _sql, _parameters, async (connection, transaction) =>
                 {
                     res = await connection.QueryAsync<T>(
                         _sql,
-                        _dyn,
+                        _parameters,
                         commandTimeout: _executionContext.CommandTimeout,
                         transaction: transaction,
                         commandType: _commandType);
@@ -105,11 +105,11 @@ namespace FMSoftlab.DataAccess
         {
             try
             {
-                await _singleTransactionManager.Execute(_ownsTransaction, _sql, _dyn, async (connection, transaction) =>
+                await _singleTransactionManager.Execute(_ownsTransaction, _sql, _parameters, async (connection, transaction) =>
                 {
                     var reader = await connection.QueryMultipleAsync(
                         _sql,
-                        _dyn,
+                        _parameters,
                         commandTimeout: _executionContext.CommandTimeout,
                         transaction: transaction,
                         commandType: _commandType);
@@ -129,11 +129,11 @@ namespace FMSoftlab.DataAccess
             T res = default(T);
             try
             {
-                await _singleTransactionManager.Execute(_ownsTransaction, _sql, _dyn, async (connection, transaction) =>
+                await _singleTransactionManager.Execute(_ownsTransaction, _sql, _parameters, async (connection, transaction) =>
                 {
                     res = await connection.ExecuteScalarAsync<T>(
                         _sql,
-                        _dyn,
+                        _parameters,
                         commandTimeout: _executionContext.CommandTimeout,
                         transaction: transaction,
                         commandType: _commandType);

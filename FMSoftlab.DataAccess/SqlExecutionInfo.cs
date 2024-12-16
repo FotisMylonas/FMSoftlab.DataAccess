@@ -10,7 +10,7 @@ namespace FMSoftlab.DataAccess
     {
         public string Sql { get; set; }
         public CommandType CommandType { get; set; }
-        public DynamicParameters DynamicParameters { get; set; }
+        public object Parameters { get; set; }
         public SqlExecutionInfo()
         {
 
