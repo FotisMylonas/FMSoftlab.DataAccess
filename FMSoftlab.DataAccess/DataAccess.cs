@@ -93,6 +93,30 @@ namespace FMSoftlab.DataAccess
                 }
             }
         }
+        public async Task<IDataReader> ExecuteReader()
+        {
+            IDataReader res = null;
+            try
+            {
+                await _singleTransactionManager.Execute(_ownsTransaction, _sql, _parameters, async (connection, transaction) =>
+                {
+                    res = await connection.ExecuteReaderAsync(
+                        _sql,
+                        _parameters,
+                        transaction: transaction,
+                        commandTimeout: _executionContext.CommandTimeout,
+                        commandType: _commandType);
+                });
+                return res;
+            }
+            finally
+            {
+                if (_ownsTransaction)
+                {
+                    _singleTransactionManager.Dispose();
+                }
+            }
+        }
         public async Task<IEnumerable<dynamic>> Query()
         {
             return await Query<dynamic>();
