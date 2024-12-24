@@ -174,5 +174,31 @@ namespace FMSoftlab.DataAccess.Tests
             Assert.Equal(10, id1);
             Assert.Equal(CheckValue, id2);
         }
+
+        [Fact]
+        public async Task Execute_Reader()
+        {
+            int id1 = 0;
+            ExecutionContext context = new ExecutionContext(_connectionString);
+            DynamicParameters dyn = new DynamicParameters(new { Id = CheckValue });
+            using (ISqlConnectionProvider con = new SqlConnectionProvider(context.ConnectionString))
+            {
+                using (SingleTransactionManager tm = new SingleTransactionManager(con, context, null))
+                {
+                    tm.BeginTransaction();
+                    await new SqlExecution(context, tm, "create table ##temptable(Id int);insert into ##temptable(Id) values(10);", null, CommandType.Text, null).Execute();
+                    using (IDataReader read = await new SqlExecution(context, tm, "select id from ##temptable", null, CommandType.Text, null).ExecuteReader())
+                    {
+                        while (read.Read())
+                        {
+                            id1 = read.GetInt32(0);
+                        }
+                    }
+                    tm.Rollback();
+                }
+            }
+            Assert.Equal(10, id1);
+        }
+
     }
 }

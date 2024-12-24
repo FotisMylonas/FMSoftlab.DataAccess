@@ -122,19 +122,19 @@ namespace FMSoftlab.DataAccess
                 return;
             try
             {
+                _log?.LogTrace("newTransaction:{newTransaction}", newTransaction);
                 if (newTransaction)
                     await BeginTransactionAsync();
                 string tracesqltext = SqlHelperUtils.BuildFinalQuery(sql, parameters);
-                _log?.LogTrace("Will execute sql, ConnectionString:{0}, " +
-                    "isolation level: {1}, " +
-                    "sql:{2l}, " +
-                    "ServerProcessId:{3}, " +
-                    "clientconnectionid:{4}",
+                _log?.LogTrace("Will execute sql, ConnectionString:{ConnectionString}, newTransaction:{newTransaction}" +
+                    "isolation level:{isolation}, ServerProcessId:{ServerProcessId}, clientconnectionid:{clientconnectionid}"+Environment.NewLine+
+                    "sql:{sql}",
                     _connectionProvider.Connection.ConnectionString,
+                    newTransaction,
                     _tranaction?.IsolationLevel,
-                    tracesqltext,
                     _connectionProvider.Connection.ServerProcessId,
-                    _connectionProvider.Connection.ClientConnectionId);
+                    _connectionProvider.Connection.ClientConnectionId,
+                    tracesqltext);
                 //_log?.LogDebug("{tracesqltext}", tracesqltext);
                 await execute(_connectionProvider.Connection, _tranaction);
                 if (newTransaction)
