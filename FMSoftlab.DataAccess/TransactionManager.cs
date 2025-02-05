@@ -20,7 +20,7 @@ namespace FMSoftlab.DataAccess
         Task<IDbTransaction> BeginTransactionAsync();
         Task Execute(bool startsTransaction, string sql, object parameters, Func<IDbConnection, IDbTransaction, Task> execute);
     }
-    public class SingleTransactionManager : ISingleTransactionManager
+    public class SingleTransactionManager : ISingleTransactionManager, IDisposable
     {
         private IDbTransaction _tranaction;
         private ISqlConnectionProvider _connectionProvider;
@@ -72,13 +72,14 @@ namespace FMSoftlab.DataAccess
                 try
                 {
                     _tranaction.Commit();
-                    _log?.LogTrace("Transaction Committed!");
+                    _log?.LogTrace("SingleTransactionManager, Transaction Committed!");
                 }
                 finally
                 {
                     try
                     {
                         _tranaction.Dispose();
+                        _log?.LogTrace("SingleTransactionManager, Transaction disposed!");
                     }
                     finally
                     {
@@ -103,11 +104,19 @@ namespace FMSoftlab.DataAccess
                 try
                 {
                     _tranaction.Rollback();
-                    _log?.LogWarning("Transaction rollback!");
+                    _log?.LogWarning("SingleTransactionManager, Transaction rollback!");
                 }
                 finally
                 {
-                    _tranaction=null;
+                    try
+                    {
+                        _tranaction.Dispose();
+                        _log?.LogTrace("SingleTransactionManager, Transaction disposed!");
+                    }
+                    finally
+                    {
+                        _tranaction=null;
+                    }
                 }
             }
             catch (Exception ex)
@@ -122,11 +131,11 @@ namespace FMSoftlab.DataAccess
                 return;
             try
             {
-                _log?.LogTrace("newTransaction:{newTransaction}", newTransaction);
+                _log?.LogTrace("SingleTransactionManager, newTransaction:{newTransaction}", newTransaction);
                 if (newTransaction)
                     await BeginTransactionAsync();
                 string tracesqltext = SqlHelperUtils.BuildFinalQuery(sql, parameters);
-                _log?.LogTrace("Will execute sql, ConnectionString:{ConnectionString}, newTransaction:{newTransaction}" +
+                _log?.LogTrace("SingleTransactionManager, Will execute sql, ConnectionString:{ConnectionString}, newTransaction:{newTransaction}, " +
                     "isolation level:{isolation}, ServerProcessId:{ServerProcessId}, clientconnectionid:{clientconnectionid}"+Environment.NewLine+
                     "sql:{sql}",
                     _connectionProvider.Connection.ConnectionString,
@@ -151,6 +160,7 @@ namespace FMSoftlab.DataAccess
         }
         public void Dispose()
         {
+            _log?.LogTrace("SingleTransactionManager, Disposing...");
             try
             {
                 Rollback();

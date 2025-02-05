@@ -44,7 +44,7 @@ namespace FMSoftlab.DataAccess
             _ownsConnection = true;
             _log=log;
         }
-        public SqlConnectionProvider(string connectionString) : this(new ExecutionContext(connectionString), null)
+        public SqlConnectionProvider(string connectionString, ILogger log) : this(new ExecutionContext(connectionString), log)
         {
 
         }
@@ -58,7 +58,7 @@ namespace FMSoftlab.DataAccess
         public async Task<IDbTransaction> BeginTransactionAsync(IsolationLevel iso)
         {
             await OpenAsync();
-            _log?.LogTrace("Begin transaction with isolation level {IsolationLevel}", iso);
+            _log?.LogTrace("Begin transaction async with isolation level {IsolationLevel}", iso);
             return _sqlConnection.BeginTransaction(iso);
         }
 
@@ -101,7 +101,10 @@ namespace FMSoftlab.DataAccess
         {
             ValidateConnection();
             if (!_ownsConnection)
+            {
+                _log?.LogTrace("Connection not owned, will not close");
                 return;
+            }
             if (_sqlConnection.State == ConnectionState.Open)
             {
                 _log?.LogTrace("Closing connection {ConnectionString}...", _sqlConnection.ConnectionString);
@@ -135,6 +138,7 @@ namespace FMSoftlab.DataAccess
         {
             if (!_ownsConnection)
             {
+                _log?.LogTrace("Connection not owned, will not dispose");
                 return;
             }
             try
