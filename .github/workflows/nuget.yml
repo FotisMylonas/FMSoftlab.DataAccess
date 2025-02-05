@@ -24,17 +24,17 @@ jobs:
         
     - name: Determine Version
       run: |
-        echo "VERSION=${{ steps.version.outputs.version-without-v }}" >> $GITHUB_ENV
+        echo "PVERSION=${{ steps.version.outputs.version-without-v }}" >> $GITHUB_ENV
           
     - name: Display Version
       run: |
-        echo "Version: ${{ env.VERSION }}"
+        echo "Version: ${{ env.PVERSION }}"
 
     - name: Update Version in .csproj
       run: |
-        sed -i "s|<Version>.*</Version>|<Version>${{ env.VERSION }}</Version>|" ${{ env.PROJECT_PATH }}
-        sed -i "s|<AssemblyVersion>.*</AssemblyVersion>|<AssemblyVersion>${{ env.VERSION }}.0</AssemblyVersion>|" ${{ env.PROJECT_PATH }}
-        sed -i "s|<FileVersion>.*</FileVersion>|<FileVersion>${{ env.VERSION }}.0</FileVersion>|" ${{ env.PROJECT_PATH }}
+        sed -i "s|<Version>.*</Version>|<Version>${{ env.PVERSION }}</Version>|" ${{ env.PROJECT_PATH }}
+        sed -i "s|<AssemblyVersion>.*</AssemblyVersion>|<AssemblyVersion>${{ env.PVERSION }}.0</AssemblyVersion>|" ${{ env.PROJECT_PATH }}
+        sed -i "s|<FileVersion>.*</FileVersion>|<FileVersion>${{ env.PVERSION }}.0</FileVersion>|" ${{ env.PROJECT_PATH }}
 
     - name: 'Install dotnet'
       uses: actions/setup-dotnet@v1
