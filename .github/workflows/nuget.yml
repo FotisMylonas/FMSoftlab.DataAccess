@@ -28,9 +28,9 @@ jobs:
           
     - name: Update Version in .csproj
       run: |
-        sed -i 's|<Version>.*<\/Version>/<Version>${{ env.VERSION }}<\/Version>/' ${{ env.PROJECT_PATH }}
-        sed -i 's|<AssemblyVersion>.*<\/AssemblyVersion>/<AssemblyVersion>${{ env.VERSION }}.0<\/AssemblyVersion>/' ${{ env.PROJECT_PATH }}
-        sed -i 's|<FileVersion>.*<\/FileVersion>/<FileVersion>${{ env.VERSION }}.0<\/FileVersion>/' ${{ env.PROJECT_PATH }}
+        sed -i 's|<Version>.*<\/Version>/<Version>${{ env.VERSION }}<\/Version>' ${{ env.PROJECT_PATH }}
+        sed -i 's|<AssemblyVersion>.*<\/AssemblyVersion>/<AssemblyVersion>${{ env.VERSION }}.0<\/AssemblyVersion>' ${{ env.PROJECT_PATH }}
+        sed -i 's|<FileVersion>.*<\/FileVersion>/<FileVersion>${{ env.VERSION }}.0<\/FileVersion>' ${{ env.PROJECT_PATH }}
 
     - name: 'Install dotnet'
       uses: actions/setup-dotnet@v1
