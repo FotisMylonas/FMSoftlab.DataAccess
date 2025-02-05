@@ -28,15 +28,15 @@ jobs:
       uses: battila7/get-version-action@v2
         
     - name: Determine Version
-        run: |
-          VERSION=${{ steps.version.outputs.version-without-v }}
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+      run: |
+        VERSION=${{ steps.version.outputs.version-without-v }}
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
           
     - name: Update Version in .csproj
-        run: |
-          sed -i 's|<Version>.*</Version>|<Version>${{ env.VERSION }}</Version>|' ${{ env.PROJECT_PATH }}
-          sed -i 's|<AssemblyVersion>.*</AssemblyVersion>|<AssemblyVersion>${{ env.VERSION }}.0</AssemblyVersion>|' ${{ env.PROJECT_PATH }}
-          sed -i 's|<FileVersion>.*</FileVersion>|<FileVersion>${{ env.VERSION }}.0</FileVersion>|' ${{ env.PROJECT_PATH }}
+      run: |
+        sed -i 's|<Version>.*</Version>|<Version>${{ env.VERSION }}</Version>|' ${{ env.PROJECT_PATH }}
+        sed -i 's|<AssemblyVersion>.*</AssemblyVersion>|<AssemblyVersion>${{ env.VERSION }}.0</AssemblyVersion>|' ${{ env.PROJECT_PATH }}
+        sed -i 's|<FileVersion>.*</FileVersion>|<FileVersion>${{ env.VERSION }}.0</FileVersion>|' ${{ env.PROJECT_PATH }}
 
     - name: 'Restore packages'
       run: dotnet restore ${{ env.PROJECT_PATH }}
