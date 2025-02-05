@@ -26,6 +26,10 @@ jobs:
       run: |
         echo "VERSION=${{ steps.version.outputs.version-without-v }}" >> $GITHUB_ENV
           
+    - name: Display Version
+      run: |
+        echo "Version: ${{ env.VERSION }}"
+
     - name: Update Version in .csproj
       run: |
         sed -i "s|<Version>.*</Version>|<Version>${{ env.VERSION }}</Version>|" ${{ env.PROJECT_PATH }}
