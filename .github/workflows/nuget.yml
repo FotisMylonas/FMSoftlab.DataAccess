@@ -29,7 +29,7 @@ jobs:
         
     - name: Determine Version
       run: |
-        VERSION=${{ steps.version.outputs.version-without-v }}
+        VERSION="${{ steps.version.outputs.version-without-v }}"
         echo "VERSION=$VERSION" >> $GITHUB_ENV
           
     - name: Update Version in .csproj
