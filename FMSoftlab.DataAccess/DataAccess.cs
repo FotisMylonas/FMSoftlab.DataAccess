@@ -135,13 +135,16 @@ namespace FMSoftlab.DataAccess
             {
                 await _singleTransactionManager.Execute(_ownsTransaction, _sql, _parameters, async (connection, transaction) =>
                 {
-                    var reader = await connection.QueryMultipleAsync(
+                    using (var reader = await connection.QueryMultipleAsync(
                         _sql,
                         _parameters,
                         commandTimeout: _executionContext.CommandTimeout,
                         transaction: transaction,
-                        commandType: _commandType);
-                    action(reader);
+                        commandType: _commandType))
+                    {
+                        _log.LogDebug("QueryMultiple: {sql}", _sql);
+                        action(reader);
+                    }
                 });
             }
             finally
