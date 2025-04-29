@@ -8,6 +8,7 @@ using System.Data;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using static System.Collections.Specialized.BitVector32;
 
 
 namespace FMSoftlab.DataAccess
@@ -129,7 +130,7 @@ namespace FMSoftlab.DataAccess
                 res=dbres.First();
             return res;
         }
-        public async Task QueryMultiple(Action<SqlMapper.GridReader> action)
+        public async Task QueryMultiple(Func<SqlMapper.GridReader, Task> action)
         {
             try
             {
@@ -143,7 +144,7 @@ namespace FMSoftlab.DataAccess
                         commandType: _commandType))
                     {
                         _log.LogDebug("QueryMultiple: {sql}", _sql);
-                        action(reader);
+                        await action(reader);
                     }
                 });
             }
