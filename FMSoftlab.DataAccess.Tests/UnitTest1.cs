@@ -3,6 +3,7 @@ using FMSoftlab.DataAccess;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Extensions.Logging;
+using System;
 using System.Data;
 using ExecutionContext = FMSoftlab.DataAccess.ExecutionContext;
 namespace FMSoftlab.DataAccess.Tests
@@ -115,20 +116,45 @@ namespace FMSoftlab.DataAccess.Tests
         [Fact]
         public async Task Select_QueryMultiple_1()
         {
-            int id = 0;
+            int int1 = 0;
+            int int2 = 0;
+            int int3 = 0;
             ExecutionContext context = new ExecutionContext(_connectionString);
             ISqlConnectionProvider con = new SqlConnectionProvider(context.ConnectionString, _logger);
             SingleTransactionManager tm = new SingleTransactionManager(con, context, _logger);
             DynamicParameters dyn = new DynamicParameters(new { Id = CheckValue });
             tm.BeginTransaction();
-            SqlExecution execution = new SqlExecution(context, tm, "Select @Id as Id", dyn, CommandType.Text, _logger);
+            SqlExecution execution = new SqlExecution(context, tm, "Select @Id as Id;Select @Id as Id;Select @Id as Id", dyn, CommandType.Text, _logger);
             await execution.QueryMultiple(async (x) =>
             {
-                var dr = await x.ReadAsync<int>(buffered: false);
-                id=dr.FirstOrDefault<int>();
+                int1 = (await x.ReadAsync<int>()).FirstOrDefault();
+                int2 = (await x.ReadAsync<int>()).FirstOrDefault();
+                int3 = (await x.ReadAsync<int>()).FirstOrDefault();
             });
             tm.Rollback();
-            Assert.Equal(CheckValue, id);
+            Assert.Equal(CheckValue, int1);
+            Assert.Equal(CheckValue, int2);
+            Assert.Equal(CheckValue, int3);
+        }
+
+        [Fact]
+        public async Task Select_QueryMultiple_2()
+        {
+            int int1 = 0;
+            int int2 = 0;
+            int int3 = 0;
+            ExecutionContext context = new ExecutionContext(_connectionString);
+            DynamicParameters dyn = new DynamicParameters(new { Id = CheckValue });
+            SqlExecution execution = new SqlExecution(context, "Select @Id as Id;Select @Id as Id;Select @Id as Id", dyn, CommandType.Text, _logger);
+            await execution.QueryMultiple(async (x) =>
+            {
+                int1 = (await x.ReadAsync<int>()).FirstOrDefault();
+                int2 = (await x.ReadAsync<int>()).FirstOrDefault();
+                int3 = (await x.ReadAsync<int>()).FirstOrDefault();
+            });
+            Assert.Equal(CheckValue, int1);
+            Assert.Equal(CheckValue, int2);
+            Assert.Equal(CheckValue, int3);
         }
 
         [Fact]
@@ -139,25 +165,11 @@ namespace FMSoftlab.DataAccess.Tests
             using SingleTransactionManager tm = new SingleTransactionManager(con, context, _logger);
             DynamicParameters dyn = new DynamicParameters(new { Id = CheckValue });
             tm.BeginTransaction();
-            SqlExecution execution = new SqlExecution(context, tm, "Select @Id as Id", dyn, CommandType.Text, _logger);
+            SqlExecution execution = new SqlExecution(context, tm, "Select @Id as Id;", dyn, CommandType.Text, _logger);
             await execution.Execute();
             tm.Rollback();
         }
 
-        [Fact]
-        public async Task Select_QueryMultiple_2()
-        {
-            int id = 0;
-            ExecutionContext context = new ExecutionContext(_connectionString);
-            DynamicParameters dyn = new DynamicParameters(new { Id = CheckValue });
-            SqlExecution execution = new SqlExecution(context, "Select @Id as Id", dyn, CommandType.Text, _logger);
-            await execution.QueryMultiple(async (x) =>
-            {
-                var dr = await x.ReadAsync<int>(buffered: false);
-                id=dr.FirstOrDefault<int>();
-            });
-            Assert.Equal(CheckValue, id);
-        }
 
         [Fact]
         public async Task Execute_1()

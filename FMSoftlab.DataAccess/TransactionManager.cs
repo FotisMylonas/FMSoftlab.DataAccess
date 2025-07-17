@@ -22,7 +22,7 @@ namespace FMSoftlab.DataAccess
     }
     public class SingleTransactionManager : ISingleTransactionManager, IDisposable
     {
-        private IDbTransaction _tranaction;
+        private IDbTransaction _transaction;
         private ISqlConnectionProvider _connectionProvider;
         private IExecutionContext _executionContext;
         private ILogger _log;
@@ -32,14 +32,14 @@ namespace FMSoftlab.DataAccess
         {
             _connectionProvider=connectionProvider;
             _executionContext =executionContext;
-            _tranaction=null;
+            _transaction=null;
             _log =log;
             _ownsConnection=false;
         }
         public SingleTransactionManager(IExecutionContext executionContext, ILogger log)
         {
             _executionContext =executionContext;
-            _tranaction=null;
+            _transaction=null;
             _log =log;
             _connectionProvider=new SqlConnectionProvider(executionContext, _log);
             _ownsConnection=true;
@@ -47,23 +47,23 @@ namespace FMSoftlab.DataAccess
 
         public IDbTransaction BeginTransaction()
         {
-            if (_tranaction==null)
+            if (_transaction is null)
             {
-                _tranaction=_connectionProvider.BeginTransaction(_executionContext.IsolationLevel);
+                _transaction=_connectionProvider.BeginTransaction(_executionContext.IsolationLevel);
             }
-            return _tranaction;
+            return _transaction;
         }
         public async Task<IDbTransaction> BeginTransactionAsync()
         {
-            if (_tranaction==null)
+            if (_transaction is null)
             {
-                _tranaction=await _connectionProvider.BeginTransactionAsync(_executionContext.IsolationLevel);
+                _transaction=await _connectionProvider.BeginTransactionAsync(_executionContext.IsolationLevel);
             }
-            return _tranaction;
+            return _transaction;
         }
         public void Commit()
         {
-            if (_tranaction==null)
+            if (_transaction==null)
             {
                 return;
             }
@@ -71,19 +71,19 @@ namespace FMSoftlab.DataAccess
             {
                 try
                 {
-                    _tranaction.Commit();
+                    _transaction.Commit();
                     _log?.LogTrace("SingleTransactionManager, Transaction Committed!");
                 }
                 finally
                 {
                     try
                     {
-                        _tranaction.Dispose();
+                        _transaction.Dispose();
                         _log?.LogTrace("SingleTransactionManager, Transaction disposed!");
                     }
                     finally
                     {
-                        _tranaction=null;
+                        _transaction=null;
                     }
                 }
             }
@@ -95,7 +95,7 @@ namespace FMSoftlab.DataAccess
         }
         public void Rollback()
         {
-            if (_tranaction==null)
+            if (_transaction==null)
             {
                 return;
             }
@@ -103,19 +103,19 @@ namespace FMSoftlab.DataAccess
             {
                 try
                 {
-                    _tranaction.Rollback();
+                    _transaction.Rollback();
                     _log?.LogWarning("SingleTransactionManager, Transaction rollback!");
                 }
                 finally
                 {
                     try
                     {
-                        _tranaction.Dispose();
+                        _transaction.Dispose();
                         _log?.LogTrace("SingleTransactionManager, Transaction disposed!");
                     }
                     finally
                     {
-                        _tranaction=null;
+                        _transaction=null;
                     }
                 }
             }
@@ -140,12 +140,12 @@ namespace FMSoftlab.DataAccess
                     "sql:{sql}",
                     _connectionProvider.Connection.ConnectionString,
                     newTransaction,
-                    _tranaction?.IsolationLevel,
+                    _transaction?.IsolationLevel,
                     _connectionProvider.Connection.ServerProcessId,
                     _connectionProvider.Connection.ClientConnectionId,
                     tracesqltext);
                 //_log?.LogDebug("{tracesqltext}", tracesqltext);
-                await execute(_connectionProvider.Connection, _tranaction);
+                await execute(_connectionProvider.Connection, _transaction);
                 if (newTransaction)
                     Commit();
             }
@@ -183,11 +183,11 @@ namespace FMSoftlab.DataAccess
 
             if (parameters is null)
             {
-                return string.Empty;
+                return commandText;
             }
             if (!(parameters is DynamicParameters sqlDynamicParams))
             {
-                return string.Empty;
+                return commandText;
             }
             var sb = new StringBuilder();
             try
