@@ -151,10 +151,10 @@ namespace FMSoftlab.DataAccess
             }
             catch (Exception ex)
             {
-                if (newTransaction)
-                    Rollback();
                 string tracesqltext = SqlHelperUtils.BuildFinalQuery(sql, parameters);
                 _log?.LogAllErrors(ex, tracesqltext);
+                if (newTransaction)
+                    Rollback();
                 throw;
             }
         }

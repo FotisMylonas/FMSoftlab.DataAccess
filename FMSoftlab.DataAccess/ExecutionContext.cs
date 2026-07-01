@@ -78,7 +78,7 @@ namespace FMSoftlab.DataAccess
         }
         public IExecutionContext ThirtySeconds()
         {
-            return new ExecutionContext(_connectionString, 10, _isolationLevel);
+            return new ExecutionContext(_connectionString, 30, _isolationLevel);
         }
 
         public IExecutionContext OneMinute()
